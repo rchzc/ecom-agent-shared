@@ -138,13 +138,23 @@ class Settings:
         return self.provider == "mock"
 
 
-def load_settings(env_file: str | None = None) -> Settings:
+def load_settings(env_file: str | None = None, *, load_env_file: bool = True) -> Settings:
     """读取并校验配置。任何一项不合法都直接抛 ConfigError。
 
     env_file 为 None 时按 python-dotenv 默认规则从当前工作目录向上找 .env；
     显式传入路径则以该文件为准（业务仓通常传自己仓库根目录的 .env）。
+
+    load_env_file=False 表示"只按当前进程的环境变量解析，不要再去读 .env 文件"。
+    什么时候需要它：读文件是有副作用的 I/O（会往 os.environ 里塞值），而校验逻辑
+    应该是纯粹的函数。调用方若已经在模块导入阶段 load_dotenv 过一次（业务仓的常见
+    做法，因为大多数模块要的配置早于 load_settings 被调用），或者需要确定性地按
+    测试注入的环境变量取值，就传 False。
+    不传这个开关会有一个隐蔽后果：测试里 monkeypatch.delenv("LLM_API_KEY") 删掉的
+    变量，会被这里重新读 .env 时填回来，于是"缺 Key 应当报错"的用例永远不报错 ——
+    测试看着在跑，其实什么都没验证。
     """
-    load_dotenv(env_file) if env_file else load_dotenv()
+    if load_env_file:
+        load_dotenv(env_file) if env_file else load_dotenv()
 
     provider = _env("LLM_PROVIDER", "dashscope").lower()
     if provider not in PROVIDER_PRESETS:
