@@ -77,6 +77,39 @@ def test_mock_emits_answer_after_tool_result(settings):
     assert decision["content"]
 
 
+# -- 工具报错时重试：这条决定了"反复撞同一个工具报错"能不能被造出来 ---------------
+# 循环的错误预算（同一个工具失败到上限就禁用）只有在**真有第二次失败**时才会触发，
+# 所以 mock 必须区分"工具成功返回"和"工具报错"，否则自进化演示永远造不出失败样本。
+
+_ERROR_OBSERVATION = '工具 rag_search 返回：{"ok": false, "error": "知识库服务不可用"}。请继续。'
+
+
+def test_mock_retries_tool_when_observation_is_error(settings):
+    gw = MockLLMGateway(settings)
+    content, _ = run(gw.complete("你可以使用以下可用工具：rag_search", _ERROR_OBSERVATION))
+    decision = parse_json_lenient(content)
+    assert decision["action"] == "tool", "工具报错时不该拿失败记录当依据作答"
+    assert decision["tool"] == "rag_search"
+
+
+def test_mock_answers_on_error_once_tools_are_forbidden(settings):
+    """工具被禁用后必须收尾 —— 否则重试会变成新的死循环。"""
+    gw = MockLLMGateway(settings)
+    forbidden = "本轮不允许再调用任何工具，请直接基于已知信息作答。\n只输出 JSON 示例："
+    content, _ = run(gw.complete(forbidden, _ERROR_OBSERVATION))
+    decision = parse_json_lenient(content)
+    assert decision["action"] != "tool"
+
+
+def test_mock_answers_on_successful_result_even_with_tools_declared(settings):
+    """反例：成功的结果不该触发重试，否则正常流程也会撞迭代上限。"""
+    gw = MockLLMGateway(settings)
+    content, _ = run(
+        gw.complete("你可以使用以下可用工具：rag_search", "工具 rag_search 返回：3 条命中。请继续。")
+    )
+    assert parse_json_lenient(content)["action"] == "answer"
+
+
 def test_mock_template_registration_wins(settings):
     gw = MockLLMGateway(settings)
     gw.register_template("评分", {"score": 88, "level": "A"})
