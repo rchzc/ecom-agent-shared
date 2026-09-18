@@ -68,13 +68,23 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, ensure_ascii=False, default=str)
 
 
-def setup_logging(level: str = "INFO") -> None:
-    """安装全局日志配置。重复调用是幂等的（避免 uvicorn reload 时句柄翻倍）。"""
+def setup_logging(level: str = "INFO", stream=None) -> None:
+    """安装全局日志配置。重复调用是幂等的（避免 uvicorn reload 时句柄翻倍）。
+
+    **默认写 stderr，不是 stdout。** 这条不是风格问题，是协议问题：
+    MCP 的 stdio 传输里 stdout 是**协议通道**，混进一行日志客户端就解析失败。
+    本模块的 docstring 与 `mcp/server.py` 都写了这条禁忌，但默认值指向 stdout
+    时，只要有人忘了覆盖 stream，禁忌就会被无声违反 —— 把正确行为做成默认值，
+    比在每个入口重复提醒更可靠。
+
+    stderr 对普通 CLI 也更合适：stdout 留给数据，日志走 stderr，
+    `python -m xxx > out.json` 才不会被日志污染。
+    """
     root = logging.getLogger()
     for handler in list(root.handlers):
         root.removeHandler(handler)
 
-    handler = logging.StreamHandler(sys.stdout)
+    handler = logging.StreamHandler(stream or sys.stderr)
     handler.setFormatter(JsonFormatter())
     root.addHandler(handler)
     root.setLevel(level.upper())
