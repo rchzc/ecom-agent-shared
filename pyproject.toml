@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecom-agent-shared"
+version = "1.0.0"
+description = "MCP & Agent 共享集群：LLM 网关 / RAG / 记忆 / Prompt / 工具协议，供所有业务 Agent 复用"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Li Wenyu" }]
+keywords = ["mcp", "agent", "rag", "llm-gateway", "e-commerce"]
+
+dependencies = [
+    "openai>=1.30",
+    "python-dotenv>=1.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+# ChromaDB 后端：不装则自动退回 numpy 后端，检索能力仍在，只是少了 HNSW 索引
+chroma = ["chromadb>=0.4.22"]
+# 官方 MCP SDK：装了就额外暴露 stdio 传输，不装则用内置 HTTP 传输
+mcp = ["mcp>=1.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+ecom-shared-demo = "demo:main"
+
+[tool.setuptools]
+packages = [
+    "ecom_shared",
+    "ecom_shared.gateway",
+    "ecom_shared.rag",
+    "ecom_shared.memory",
+    "ecom_shared.prompts",
+    "ecom_shared.mcp",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
