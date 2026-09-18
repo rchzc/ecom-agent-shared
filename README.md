@@ -179,15 +179,15 @@ python -m venv .venv && .venv/Scripts/activate      # Windows
 pip install -e ".[dev,chroma]"
 
 python demo.py                   # 离线演示，不需要任何 Key
-pytest                           # 114 个用例，全离线
+pytest                           # 137 个用例，全离线
 ```
 
 接真实模型：复制 `.env.example` 为 `.env`，填 `LLM_API_KEY` 即可。**代码零改动。**
 
-作为库使用：
+作为库使用（`name @ git+url` 这种写法，`pip install git+url` 的旧写法已废弃、会告警）：
 
 ```bash
-pip install git+https://github.com/<user>/ecom-agent-shared.git
+pip install "ecom-agent-shared @ git+https://github.com/rchzc/ecom-agent-shared.git@main"
 ```
 
 ---
